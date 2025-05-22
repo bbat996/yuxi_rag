@@ -1,9 +1,8 @@
 services:
   api:
-    image: bbat996/yuxi-api
-    # build:
-    #   context: ..
-    #   dockerfile: docker/api.Dockerfile
+    build:
+      context: ..
+      dockerfile: docker/api.Dockerfile
     container_name: api-dev
     working_dir: /app
     volumes:
@@ -25,6 +24,26 @@ services:
       - MODEL_DIR=/models  # 优先级高于 .env 中的 MODEL_DIR
       - RUNNING_IN_DOCKER=true
     command: uvicorn server.main:app --host 0.0.0.0 --port 5050 --reload
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/web.Dockerfile
+      target: development
+    container_name: web-dev
+    volumes:
+      - ../web:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+    networks:
+      - app-network
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://api:5050  # 添加这行
+    command: npm run server
 
   graph:
     image: neo4j:5.26

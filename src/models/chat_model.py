@@ -5,13 +5,13 @@ from src.utils import logger, get_docker_safe_url
 from langchain_openai import ChatOpenAI
 
 class OpenAIBase():
-    def __init__(self, api_key, base_url, model_name, **kwargs):
+    def __init__(self, api_key, base_url, model_name, chat_open_ai=None, **kwargs):
         self.api_key = api_key
         self.base_url = base_url
         self.client = OpenAI(api_key=api_key, base_url=base_url)
         self.model_name = model_name
         self.info = kwargs
-        self.chat_open_ai = ChatOpenAI(model=model_name,
+        self.chat_open_ai = chat_open_ai or ChatOpenAI(model=model_name,
                                        api_key=api_key,
                                        base_url=base_url)
 
@@ -27,14 +27,20 @@ class OpenAIBase():
             return self._get_response(messages)
 
     def _stream_response(self, messages):
-        response = self.client.chat.completions.create(
-            model=self.model_name,
-            messages=messages,
-            stream=True,
-        )
-        for chunk in response:
-            if len(chunk.choices) > 0:
-                yield chunk.choices[0].delta
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=messages,
+                stream=True,
+            )
+            for chunk in response:
+                    if len(chunk.choices) > 0:
+                        yield chunk.choices[0].delta
+
+        except Exception as e:
+            err = f"Error streaming response: {e}, URL: {self.base_url}, API Key: {self.api_key[:5]}***, Model: {self.model_name}"
+            logger.error(err)
+            raise Exception(err)
 
     def _get_response(self, messages):
         response = self.client.chat.completions.create(

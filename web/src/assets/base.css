@@ -1,20 +1,20 @@
 /* color palette from <https://github.com/vuejs/theme> */
 /* https://material-foundation.github.io/material-theme-builder/ */
 :root {
-  --main-1000: #360000;
-  --main-900: #510000;
-  --main-800: #690000;
-  --main-700: #7F0000;
-  --main-600: #961B1B;
-  --main-500: #A82C2C;
-  --main-400: #B94E4E;
-  --main-300: #CB6A6A;
-  --main-200: #E18C8C;
-  --main-100: #F7ABAB;
-  --main-50: #FFCDCD;
-  --main-25: #FFE6E6;
-  --main-10: #FFF5F5;
-  --main-5: #FDFAFA;
+  --main-1000: #002A36;
+  --main-900: #003A51;
+  --main-800: #004F69;
+  --main-700: #00637F;
+  --main-600: #1B7796;
+  --main-500: #2C86A8;
+  --main-400: #4e99b9;
+  --main-300: #6AADCB;
+  --main-200: #8CC6E1;
+  --main-100: #ABE0F7;
+  --main-50: #CDF5FF;
+  --main-25: #E6FAFF;
+  --main-10: #F5FDFF;
+  --main-5: #FAFCFD;
 
   --gray-10000: #000000;
   --gray-2000: #0C1214;

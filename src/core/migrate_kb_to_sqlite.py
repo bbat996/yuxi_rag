@@ -1,107 +1,84 @@
 import os
 import json
 import time
-from pathlib import Path
-import traceback
-
 from src import config
-from src.utils import logger
-from src.core.kb_db_manager import kb_db_manager
+from src.utils import logger, hashstr
+from server.db_manager import db_manager
 
 def migrate_json_to_sqlite():
-    """将JSON文件数据迁移到SQLite数据库"""
-    # 原始JSON文件路径
+    """
+    将旧的JSON格式知识库数据迁移到SQLite数据库
+
+    Returns:
+        bool: 是否成功迁移，如果没有JSON文件或已经迁移过则返回False
+    """
     json_path = os.path.join(config.save_dir, "data", "database.json")
 
+    # 检查JSON文件是否存在
     if not os.path.exists(json_path):
-        logger.info(f"未找到原始JSON文件: {json_path}，无需迁移")
+        logger.info("没有找到旧的JSON数据文件，无需迁移")
         return False
 
     try:
-        # 读取JSON文件
-        with open(json_path, "r", encoding='utf-8') as f:
-            data = json.load(f)
+        # 读取旧的JSON文件
+        with open(json_path, 'r', encoding='utf-8') as f:
+            old_data = json.load(f)
 
-        if not data or "databases" not in data or not data["databases"]:
-            logger.info("JSON文件中没有数据库信息，无需迁移")
+        if not old_data or not isinstance(old_data, dict) or not old_data.get("databases"):
+            logger.warning("JSON文件格式不正确或为空")
             return False
 
-        # 开始迁移
-        logger.info(f"开始迁移知识库数据，共 {len(data['databases'])} 个数据库")
+        # 获取知识库列表
+        databases = old_data.get("databases", {})
 
-        # 遍历所有数据库
-        for db_info in data["databases"]:
-            db_id = db_info["db_id"]
-            name = db_info["name"]
-            description = db_info["description"]
-            embed_model = db_info.get("embed_model")
-            dimension = db_info.get("dimension")
-            metadata = db_info.get("metadata", {})
+        # 迁移每个知识库
+        for db_id, db_info in databases.items():
+            logger.info(f"正在迁移知识库: {db_info.get('name')} (ID: {db_id})")
 
-            logger.info(f"处理数据库: {name} (ID: {db_id}), metadata类型: {type(metadata)}")
-
-            # 检查数据库是否已存在
-            existing_db = kb_db_manager.get_database_by_id(db_id)
-            if existing_db:
-                logger.info(f"数据库 {name} (ID: {db_id}) 已存在，跳过创建")
-                continue
-
-            # 创建数据库
-            db = kb_db_manager.create_database(
+            # 创建知识库
+            db_dict = db_manager.create_database(
                 db_id=db_id,
-                name=name,
-                description=description,
-                embed_model=embed_model,
-                dimension=dimension,
-                metadata=metadata  # 这里传入metadata，在kb_db_manager中会被正确存储为meta_info
+                name=db_info.get('name', '未命名知识库'),
+                description=db_info.get('description', ''),
+                embed_model=db_info.get('embed_model'),
+                dimension=db_info.get('dimension')
             )
 
-            # 处理文件
-            files = db_info.get("files", {})
-            if isinstance(files, list):
-                files = {f["file_id"]: f for f in files}
-
+            # 迁移文件
+            files = db_info.get('files', {})
             for file_id, file_info in files.items():
+                logger.info(f"  正在迁移文件: {file_info.get('filename')} (ID: {file_id})")
+
                 # 添加文件
-                kb_db_manager.add_file(
+                db_manager.add_file(
                     db_id=db_id,
                     file_id=file_id,
-                    filename=file_info["filename"],
-                    path=file_info["path"],
-                    file_type=file_info["type"],
-                    status=file_info["status"]
+                    filename=file_info.get('filename', '未命名文件'),
+                    path=file_info.get('path', ''),
+                    file_type=file_info.get('type', 'unknown'),
+                    status=file_info.get('status', 'done')
                 )
 
-                # 处理节点
-                nodes = file_info.get("nodes", [])
+                # 迁移节点
+                nodes = file_info.get('nodes', [])
                 for node in nodes:
-                    node_metadata = node.get("metadata", {})
-                    if node_metadata is None:
-                        node_metadata = {}
-                    logger.debug(f"节点metadata类型: {type(node_metadata)}")
-
-                    kb_db_manager.add_node(
+                    db_manager.add_node(
                         file_id=file_id,
-                        text=node["text"],
-                        hash_value=node.get("hash"),
-                        start_char_idx=node.get("start_char_idx"),
-                        end_char_idx=node.get("end_char_idx"),
-                        metadata=node_metadata  # 在kb_db_manager中会被正确存储为meta_info
+                        text=node.get('text', ''),
+                        hash_value=node.get('hash'),
+                        start_char_idx=node.get('start_char_idx'),
+                        end_char_idx=node.get('end_char_idx'),
+                        metadata=node.get('metadata', {})
                     )
 
-            logger.info(f"数据库 {name} (ID: {db_id}) 迁移完成，共 {len(files)} 个文件")
-
-        # 备份原始JSON文件
-        backup_path = json_path + f".bak.{int(time.time())}"
+        # 备份旧的JSON文件
+        backup_path = f"{json_path}.bak.{int(time.time())}"
         os.rename(json_path, backup_path)
-        logger.info(f"迁移完成，原始JSON文件已备份为: {backup_path}")
+        logger.info(f"迁移完成，旧的JSON文件已备份到: {backup_path}")
+        logger.warning(f"请手动删除旧的JSON文件: {json_path}")
 
         return True
 
     except Exception as e:
         logger.error(f"迁移过程中出错: {e}")
-        logger.error(traceback.format_exc())
         return False
-
-if __name__ == "__main__":
-    migrate_json_to_sqlite()

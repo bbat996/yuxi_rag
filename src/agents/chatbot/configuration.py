@@ -1,6 +1,9 @@
+import uuid
+
 from dataclasses import dataclass, field
 
 from src.agents.registry import Configuration
+from src.agents.tools_factory import get_all_tools
 
 @dataclass(kw_only=True)
 class ChatbotConfiguration(Configuration):
@@ -28,8 +31,8 @@ class ChatbotConfiguration(Configuration):
             "configurable": True,
             "options": [
                 "zhipu/glm-4-plus",
-                "siliconflow/Qwen/QwQ-32B",
-                "siliconflow/deepseek-ai/DeepSeek-V3",
+                "siliconflow/Qwen/Qwen2.5-72B-Instruct",
+                "siliconflow/Qwen/Qwen2.5-7B-Instruct",
             ],
             "description": "智能体的驱动模型"
         },
@@ -39,7 +42,8 @@ class ChatbotConfiguration(Configuration):
         default_factory=list,
         metadata={
             "name": "工具",
-            "configurable": False,
+            "configurable": True,
+            "options": list(get_all_tools().keys()),  # 这里的选择是所有的工具
             "description": "工具列表"
         },
     )

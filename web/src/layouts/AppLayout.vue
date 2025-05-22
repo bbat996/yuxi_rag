@@ -2,33 +2,16 @@
 import { ref, reactive, KeepAlive, onMounted, computed } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import {
-  MessageOutlined,
-  MessageFilled,
-  SettingOutlined,
-  SettingFilled,
-  BookOutlined,
-  BookFilled,
   GithubOutlined,
-  FolderOutlined,
-  FolderFilled,
-  GoldOutlined,
-  GoldFilled,
-  ToolFilled,
-  ToolOutlined,
   BugOutlined,
-  ProjectFilled,
-  ProjectOutlined,
-  StarFilled,
-  StarOutlined,
   ExclamationCircleOutlined,
-  RobotOutlined,
-  RobotFilled,
-  ApiOutlined,
 } from '@ant-design/icons-vue'
-import { themeConfig } from '@/assets/theme'
+import { Bot, Waypoints, LibraryBig, MessageSquareMore, Settings } from 'lucide-vue-next';
+
 import { useConfigStore } from '@/stores/config'
 import { useDatabaseStore } from '@/stores/database'
 import DebugComponent from '@/components/DebugComponent.vue'
+import UserInfoComponent from '@/components/UserInfoComponent.vue'
 
 const configStore = useConfigStore()
 const databaseStore = useDatabaseStore()
@@ -57,11 +40,12 @@ const getRemoteDatabase = () => {
 const fetchGithubStars = async () => {
   try {
     isLoadingStars.value = true
+    // 公共API，可以直接使用fetch
     const response = await fetch('https://api.github.com/repos/xerrors/Yuxi-Know')
     const data = await response.json()
     githubStars.value = data.stargazers_count
   } catch (error) {
-    console.error('Error fetching GitHub stars:', error)
+    console.error('获取GitHub stars失败:', error)
   } finally {
     isLoadingStars.value = false
   }
@@ -77,35 +61,29 @@ onMounted(() => {
 const route = useRoute()
 console.log(route)
 
-const apiDocsUrl = computed(() => {
-  // return `${import.meta.env.VITE_API_URL || `http://${window.location.hostname}:${window.location.port}`}/docs`
-  return `http://localhost:5050/docs`
-})
-
-
 // 下面是导航菜单部分，添加智能体项
 const mainList = [{
     name: '对话',
     path: '/chat',
-    icon: MessageOutlined,
-    activeIcon: MessageFilled,
+    icon: MessageSquareMore,
+    activeIcon: MessageSquareMore,
+  }, {
+    name: '智能体',
+    path: '/agent',
+    icon: Bot,
+    activeIcon: Bot,
   }, {
     name: '图谱',
     path: '/graph',
-    icon: ProjectOutlined,
-    activeIcon: ProjectFilled,
+    icon: Waypoints,
+    activeIcon: Waypoints,
     // hidden: !configStore.config.enable_knowledge_graph,
   }, {
     name: '知识库',
     path: '/database',
-    icon: BookOutlined,
-    activeIcon: BookFilled,
+    icon: LibraryBig,
+    activeIcon: LibraryBig,
     // hidden: !configStore.config.enable_knowledge_base,
-  }, {
-    name: '工具',
-    path: '/tools',
-    icon: ToolOutlined,
-    activeIcon: ToolFilled,
   }
 ]
 </script>
@@ -134,7 +112,6 @@ const mainList = [{
         <DebugComponent />
       </a-drawer>
     </div>
-    
     <div class="header" :class="{ 'top-bar': layoutSettings.useTopBar }">
       <div class="logo circle">
         <router-link to="/">
@@ -151,7 +128,7 @@ const mainList = [{
           v-show="!item.hidden"
           class="nav-item"
           active-class="active">
-          <component class="icon" :is="route.path.startsWith(item.path) ? item.activeIcon : item.icon" />
+          <component class="icon" :is="route.path.startsWith(item.path) ? item.activeIcon : item.icon" size="22"/>
           <span class="text">{{item.name}}</span>
         </RouterLink>
 
@@ -165,18 +142,39 @@ const mainList = [{
       </div>
       <div class="fill" style="flex-grow: 1;"></div>
 
-      <div class="nav-item api-docs">
+
+      <div class="github nav-item">
+        <a-tooltip placement="right">
+          <template #title>欢迎 Star</template>
+          <a href="https://github.com/xerrors/Yuxi-Know" target="_blank" class="github-link">
+            <GithubOutlined class="icon" style="color: #222;"/>
+            <span v-if="githubStars > 0" class="github-stars">
+              <span class="star-count">{{ (githubStars / 1000).toFixed(1) }}k</span>
+            </span>
+          </a>
+        </a-tooltip>
+      </div>
+      <!-- <div class="nav-item api-docs">
         <a-tooltip placement="right">
           <template #title>接口文档 {{ apiDocsUrl }}</template>
           <a :href="apiDocsUrl" target="_blank" class="github-link">
             <ApiOutlined class="icon" style="color: #222;"/>
           </a>
         </a-tooltip>
+      </div> -->
+
+      <!-- 用户信息组件 -->
+      <div class="nav-item user-info">
+        <a-tooltip placement="right">
+          <template #title>用户信息</template>
+          <UserInfoComponent />
+        </a-tooltip>
       </div>
+
       <RouterLink class="nav-item setting" to="/setting" active-class="active">
         <a-tooltip placement="right">
           <template #title>设置</template>
-          <component class="icon" :is="route.path === '/setting' ? SettingFilled : SettingOutlined" />
+          <Settings />
         </a-tooltip>
       </RouterLink>
     </div>
@@ -185,14 +183,12 @@ const mainList = [{
       <RouterLink to="/database" class="nav-item" active-class="active">知识</RouterLink>
       <RouterLink to="/setting" class="nav-item" active-class="active">设置</RouterLink>
     </div>
-    <a-config-provider :theme="themeConfig">
     <router-view v-slot="{ Component, route }" id="app-router-view">
       <keep-alive v-if="route.meta.keepAlive !== false">
         <component :is="Component" />
       </keep-alive>
       <component :is="Component" v-else />
     </router-view>
-    </a-config-provider>
   </div>
 </template>
 
@@ -349,8 +345,7 @@ div.header, #app-router-view {
     width: auto;
     font-size: 20px;
     color: #333;
-    margin-bottom: 20px;
-    margin-top: 10px;
+    margin-bottom: 8px;
     padding: 16px 12px;
 
     &:hover {
@@ -472,6 +467,13 @@ div.header, #app-router-view {
     .icon {
       margin-right: 8px;
       font-size: 15px; // 减小图标大小
+      border: none;
+      outline: none;
+
+      &:focus, &:active {
+        border: none;
+        outline: none;
+      }
     }
 
     .text {
